@@ -1,11 +1,12 @@
 const assert = require("assert");
-const { getInMemDbInstance, getDbInstance } = require("./db");
+const { getInMemDbInstance } = require("./db");
 const getTransactions = require("./getTransactions");
-const bigAddr = require("./config/bigAddr");
+const addrManager = require("./utils/addrManager");
 const inMemInstance = getInMemDbInstance();
 const db = inMemInstance.db("address");
-const transformData = require("./utils/transformData");
-const addrToNewestBlock = {}; //{"address":maxBlockNumber}
+const { getTokenLength, tokenData } = require("./utils/abiMethods");
+const { writeToTokenJson } = require("./utils/addToTokenJson");
+let initialTokenLength = getTokenLength();
 
 async function cachingBigAddrTransactions() {
   //clear all collections when first start caching
@@ -14,86 +15,75 @@ async function cachingBigAddrTransactions() {
     const res = await db.collection(collections[i].name).drop();
     assert.equal(res, true);
   }
+  const bigAddr = addrManager.getAddr();
+  const addrToBlock = addrManager.getAddrToBlock();
+
   for (let key in bigAddr) {
     //get transactions from db
-    const result = await getTransactions(bigAddr[key]);
+    const result = await getTransactions(
+      bigAddr[key],
+      addrToBlock[bigAddr[key]]
+    );
+    writeToJson();
+    //transaction count length
+    if (!result) {
+      continue;
+    }
     const transactions = result[0]; //transaction info
     const max = result[1]; //max blockNumber to get info from
-    addrToNewestBlock[bigAddr[key]] = max; //update to local object
+    addrManager.setAddrToBlock(bigAddr[key], max);
     const collection = db.collection(bigAddr[key]);
     const inserted = await collection.insertMany(transactions);
     assert.equal(transactions.length, inserted.result.n);
     console.log(
-      `cache ${transactions.length} transactions for address: ${bigAddr[key]}`
+      `cache ${transactions.length} transactions for ${key} address: ${bigAddr[key]}`
     );
   }
-  setTimeout(() => cycleUpdateCache(), 10000);
+  setTimeout(() => cycleUpdateCache(), 30000);
 }
 
 async function cycleUpdateCache() {
   await updateCachingBigAddrTransactions();
-  setTimeout(() => cycleUpdateCache(), 10000);
+  setTimeout(() => cycleUpdateCache(), 30000);
 }
 
 async function updateCachingBigAddrTransactions() {
-  console.log("caching is going on");
+  const bigAddr = addrManager.getAddr();
+  const addrToBlock = addrManager.getAddrToBlock();
   for (let key in bigAddr) {
     //get transactions from db
-    const result = await getTransactionsGreatThenBlockNumber(
+    const result = await getTransactions(
       bigAddr[key],
-      addrToNewestBlock[bigAddr[key]]
+      addrToBlock[bigAddr[key]]
     );
-    //transaction info
+    writeToJson();
+    //transaction count length
     if (!result) {
       continue;
     }
     const transactions = result[0];
     const max = result[1]; //max blockNumber to get info from
-    addrToNewestBlock[bigAddr[key]] = max; //update to local object
+    addrManager.setAddrToBlock(bigAddr[key], max); //update max block
     const collection = db.collection(bigAddr[key]);
     const inserted = await collection.insertMany(transactions);
     assert.equal(transactions.length, inserted.result.n);
     console.log(
-      `newly cache ${transactions.length} transactions for address: ${bigAddr[key]}`
+      `newly cache ${transactions.length} transactions for ${key} address: ${bigAddr[key]}`
     );
   }
 }
 
-async function getTransactionsGreatThenBlockNumber(addr, blockNumber) {
-  const mongodb = getDbInstance();
-  const db = mongodb.db("myproject");
-  const collection = db.collection("transactions");
-  //get needed data from db
-  const fromResult = await collection
-    .find({ from: addr, blockNumber: { $gt: blockNumber } })
-    .collation({ locale: "en", strength: 2 })
-    .toArray();
-  const toResult = await collection
-    .find({ to: addr, blockNumber: { $gt: blockNumber } })
-    .collation({ locale: "en", strength: 2 })
-    .toArray();
-
-  const transferCode = "0xa9059cbb000000000000000000000000";
-  const inputData = transferCode + addr.toLowerCase().substr(2);
-  const inputResult = await collection
-    .find({
-      input: eval("/^" + inputData + "/"),
-      blockNumber: { $gt: blockNumber }
-    })
-    .toArray();
-
-  //transform data to what we need
-  const result = fromResult.concat(toResult).concat(inputResult);
-  if (result.length === 0) return 0;
-  let maxBlockNumber = result[0].blockNumber;
-  for (let i = 1; i < result.length; i++) {
-    if (result[i].blockNumber > maxBlockNumber) {
-      maxBlockNumber = result[i].blockNumber;
-    }
+function writeToJson() {
+  // write to json file
+  if (getTokenLength() > initialTokenLength) {
+    // update initial token length
+    console.log(
+      "write to tokenJson file:",
+      getTokenLength() - initialTokenLength
+    );
+    initialTokenLength = getTokenLength();
+    writeToTokenJson(__dirname + "/erc/ethToken.json", tokenData);
   }
-  const finalRes = await transformData(result);
-  //give back in a form of json
-  return [finalRes, maxBlockNumber];
 }
 
 module.exports = cachingBigAddrTransactions;
