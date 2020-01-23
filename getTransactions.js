@@ -41,10 +41,12 @@ async function getTransactions(addr, maxBlockNumber) {
   //transform data to what we need
   const result = fromResult.concat(toResult).concat(inputResult);
   if (result.length === 0) return null;
-  const blockArr = result.map(e => {
-    return e.blockNumber;
-  });
-  const max = Math.max(...blockArr);
+
+  let max = 0;
+  for (let i = 0; i < result.length; i++) {
+    if (result[i].blockNumber > max) max = result[i].blockNumber;
+  }
+
   const finalRes = await transformData(result);
   //give back in a form of json
   return [finalRes, max];
