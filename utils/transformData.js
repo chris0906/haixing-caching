@@ -5,10 +5,13 @@ const toDate = require("./toDate");
 const Web3 = require("web3");
 const web3 = new Web3(require("../config/provider").providerAddr);
 const { getDecimals, getSymbol, tokenData } = require("./abiMethods");
+const fs = require("fs");
+const writeStream = fs.createWriteStream("unknowToken.txt", { flags: "a" });
 
 module.exports = async function(arr) {
   const finalRes = [];
   const length = arr.length;
+  const unknownContractAddr = [];
   // js doesn't support address transmit, but array support
   const initialPercentage = [0];
   for (let i = 0; i < length; i++) {
@@ -30,13 +33,14 @@ module.exports = async function(arr) {
         if (!decodedData) {
           // console.log("unknown input data, contract address: ", arr[i].to);
           continue;
-        } else if (decodedData.name === "transfer") {
+        } else if (decodedData.name === "transfer" && arr[i].to !== null) {
           let decimal = getDecimals(arr[i].to);
           if (decimal === null) {
             //if ethToken json file does not have this token information, then write to ethToken json file
             const code = await web3.eth.getCode(arr[i].to);
             if (code.length <= 2) {
               console.log("not a valid contract address to get decimal from");
+              console.log(arr[i]);
               continue;
             }
             const contract = new web3.eth.Contract(abi, arr[i].to);
@@ -66,7 +70,11 @@ module.exports = async function(arr) {
     } catch (error) {
       console.log(error);
       console.log("address:", arr[i].to);
-      process.exit(1);
+      if (!unknownContractAddr.includes(arr[i].to)) {
+        unknownContractAddr.push(arr[i].to);
+        writeStream.write(`unknown contract address ${arr[i].to}\r\n`);
+      }
+      continue;
     }
   }
   if (length > 100) process.stdout.write("\n");

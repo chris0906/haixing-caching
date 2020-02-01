@@ -11,7 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "abi-decoder": "^2.2.2",
-    "mongodb": "^3.5.1",
+    "mongodb": "^3.5.2",
     "web3": "^1.2.5-rc.0"
   }
 }
