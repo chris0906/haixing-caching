@@ -1,15 +1,15 @@
 const assert = require("assert");
-const { getInMemDbInstance } = require("./db");
+const { getTempDbInstance } = require("./db");
 const getTransactions = require("./getTransactions");
 const addrManager = require("./utils/addrManager");
-const inMemInstance = getInMemDbInstance();
-const db = inMemInstance.db("address");
+const tempInstance = getTempDbInstance();
+const db = tempInstance.db("address");
 const { getTokenLength, tokenData } = require("./utils/abiMethods");
 const { writeToTokenJson } = require("./utils/addToTokenJson");
 let initialTokenLength = getTokenLength();
 
 async function cachingBigAddrTransactions() {
-  //clear all collections when first start caching
+  // clear all collections when first start caching
   const collections = await db.listCollections().toArray();
   for (let i = 0; i < collections.length; i++) {
     const res = await db.collection(collections[i].name).drop();
@@ -21,8 +21,8 @@ async function cachingBigAddrTransactions() {
   for (let key in bigAddr) {
     //get transactions from db
     const result = await getTransactions(
-      bigAddr[key],
-      addrToBlock[bigAddr[key]]
+      bigAddr[key], //address
+      addrToBlock[bigAddr[key]] //maxBlockNumber, default: 0
     );
     writeToJson();
     //transaction count length
@@ -31,12 +31,12 @@ async function cachingBigAddrTransactions() {
     }
     const transactions = result[0]; //transaction info
     const max = result[1]; //max blockNumber to get info from
-    addrManager.setAddrToBlock(bigAddr[key], max);
-    const collection = db.collection(bigAddr[key]);
+    await addrManager.setAddrToBlock(bigAddr[key], max);
+    const collection = db.collection(key + "_" + bigAddr[key]);
     const inserted = await collection.insertMany(transactions);
     assert.equal(transactions.length, inserted.result.n);
     console.log(
-      `cache ${transactions.length} transactions for ${key} address: ${bigAddr[key]}`
+      `cache ${transactions.length} transactions for ${key} address: ${bigAddr[key]}\n`
     );
   }
   setTimeout(() => cycleUpdateCache(), 30000);
@@ -63,8 +63,8 @@ async function updateCachingBigAddrTransactions() {
     }
     const transactions = result[0];
     const max = result[1]; //max blockNumber to get info from
-    addrManager.setAddrToBlock(bigAddr[key], max); //update max block
-    const collection = db.collection(bigAddr[key]);
+    await addrManager.setAddrToBlock(bigAddr[key], max); //update max block
+    const collection = db.collection(key + "_" + bigAddr[key]);
     const inserted = await collection.insertMany(transactions);
     assert.equal(transactions.length, inserted.result.n);
     console.log(

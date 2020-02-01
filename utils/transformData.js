@@ -17,7 +17,7 @@ module.exports = async function(arr) {
   for (let i = 0; i < length; i++) {
     length > 100 ? writeProgression(i, length, initialPercentage) : "";
     try {
-      let from, to, value, time, symbol;
+      let from, to, value, time, symbol, blockHash;
       //if it's eth token
       if (arr[i].input === "0x" && arr[i].value !== "0") {
         from = arr[i].from;
@@ -25,7 +25,15 @@ module.exports = async function(arr) {
         value = web3.utils.fromWei(arr[i].value, "ether");
         symbol = "ETH";
         time = toDate(arr[i].timestamp);
-        finalRes.push({ time, from, to, value, symbol });
+        blockHash = arr[i].blockHash;
+        finalRes.push({
+          time,
+          blockHash,
+          from,
+          to,
+          value,
+          symbol
+        });
       } else {
         //if it's erc20 token
         const decodedData = decoder(arr[i].input);
@@ -60,7 +68,15 @@ module.exports = async function(arr) {
           value = value.toString();
           symbol = getSymbol(arr[i].to);
           time = toDate(arr[i].timestamp);
-          finalRes.push({ time, from, to, value, symbol });
+          blockHash = arr[i].blockHash;
+          finalRes.push({
+            time,
+            blockHash,
+            from,
+            to,
+            value,
+            symbol
+          });
         } else {
           console.log(
             `${decodedData.name} method is invoked, but were not handled`

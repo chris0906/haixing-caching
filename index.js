@@ -1,9 +1,9 @@
 //initiate database
-const { initDB, initInMemDB } = require("./db");
+const { initDB, initTempDB } = require("./db");
 initDB().then(() => {
   console.log("connect to db, port: 27017");
-  initInMemDB().then(() => {
-    console.log("connect to in memory db, port: 27018");
+  initTempDB().then(() => {
+    console.log("connect to temp db, port: 27019");
     //cache big address transactions
     const cachingBigAddrTransactions = require("./cacheBigAddrTransactions");
     cachingBigAddrTransactions();

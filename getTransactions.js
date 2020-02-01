@@ -27,7 +27,8 @@ async function getTransactions(addr, maxBlockNumber) {
     timestamp: 1,
     value: 1,
     input: 1,
-    blockHash: 1
+    blockHash: 1,
+    blockNumber: 1
   };
   const fromResult = await collection
     .find({ from: addr, blockNumber: { $gt: maxBlockNumber } }, projection)

@@ -1,4 +1,8 @@
 const fs = require("fs");
+const { getTempDbInstance } = require("../db");
+const dbInstance = getTempDbInstance();
+const db = dbInstance.db("addressMapping");
+const addrToBlock = db.collection("addrToBlockNumber");
 
 class BigAddrManager {
   constructor() {
@@ -11,6 +15,13 @@ class BigAddrManager {
     this.addrToBlock = {};
     for (let key in this.bigAddr) {
       this.addrToBlock[this.bigAddr[key]] = 0;
+    }
+  }
+
+  async initAddrToBlock() {
+    const result = await addrToBlock.find({}, { _id: 0 }).toArray();
+    for (let i = 0; i < result.length; i++) {
+      this.addrToBlock[result[i].address] = result[i].blockNumber;
     }
   }
 
@@ -39,8 +50,13 @@ class BigAddrManager {
     return this.addrToBlock;
   }
 
-  setAddrToBlock(addr, maxBlock) {
+  async setAddrToBlock(addr, maxBlock) {
     this.addrToBlock[addr] = maxBlock;
+    await addrToBlock.updateOne(
+      { address: addr },
+      { $set: { address: addr, maxBlockNumber: maxBlock } },
+      { upsert: true }
+    );
   }
 
   getAddrLabel(addr) {
@@ -51,8 +67,10 @@ class BigAddrManager {
 }
 
 const addrManager = new BigAddrManager();
+addrManager.initAddrToBlock();
+
 setInterval(() => {
   addrManager.updateAddr();
-}, 10000);
+}, 60000);
 
 module.exports = addrManager;
