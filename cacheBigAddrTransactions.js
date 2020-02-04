@@ -11,27 +11,14 @@ let initialTokenLength = getTokenLength();
 async function cachingBigAddrTransactions() {
   const bigAddr = addrManager.getAddr();
   const addrToBlock = addrManager.getAddrToBlock();
-
   for (let key in bigAddr) {
-    //get transactions from db
-    const result = await getTransactions(
-      bigAddr[key], //address
-      addrToBlock[bigAddr[key]] //maxBlockNumber, default: 0
-    );
-    writeToJson();
-    //transaction count length
-    if (!result) {
-      console.log("no newest transactions");
-      continue;
-    }
-    const transactions = result[0]; //transaction info
-    const max = result[1]; //max blockNumber to get info from
-    await addrManager.setAddrToBlock(bigAddr[key], max);
-    const collection = db.collection(key + "_" + bigAddr[key]);
-    const inserted = await collection.insertMany(transactions);
-    assert.equal(transactions.length, inserted.result.n);
-    console.log(
-      `cache ${transactions.length} transactions for ${key} address: ${bigAddr[key]}\n`
+    await getDifferentTransactions("from", key, bigAddr[key], addrToBlock[key]);
+    await getDifferentTransactions("to", key, bigAddr[key], addrToBlock[key]);
+    await getDifferentTransactions(
+      "input",
+      key,
+      bigAddr[key],
+      addrToBlock[key]
     );
   }
   setTimeout(() => cycleUpdateCache(), 30000);
@@ -46,25 +33,13 @@ async function updateCachingBigAddrTransactions() {
   const bigAddr = addrManager.getAddr();
   const addrToBlock = addrManager.getAddrToBlock();
   for (let key in bigAddr) {
-    //get transactions from db
-    const result = await getTransactions(
+    await getDifferentTransactions("from", key, bigAddr[key], addrToBlock[key]);
+    await getDifferentTransactions("to", key, bigAddr[key], addrToBlock[key]);
+    await getDifferentTransactions(
+      "input",
+      key,
       bigAddr[key],
-      addrToBlock[bigAddr[key]]
-    );
-    writeToJson();
-    //transaction count length
-    if (!result) {
-      console.log("no newest transactions");
-      continue;
-    }
-    const transactions = result[0];
-    const max = result[1]; //max blockNumber to get info from
-    await addrManager.setAddrToBlock(bigAddr[key], max); //update max block
-    const collection = db.collection(key + "_" + bigAddr[key]);
-    const inserted = await collection.insertMany(transactions);
-    assert.equal(transactions.length, inserted.result.n);
-    console.log(
-      `newly cache ${transactions.length} transactions for ${key} address: ${bigAddr[key]}`
+      addrToBlock[key]
     );
   }
 }
@@ -79,6 +54,31 @@ function writeToJson() {
     );
     initialTokenLength = getTokenLength();
     writeToTokenJson(__dirname + "/erc/ethToken.json", tokenData);
+  }
+}
+
+async function getDifferentTransactions(filed, key, addr, blockNumber) {
+  const result = await getTransactions(
+    filed,
+    addr, //address
+    blockNumber //maxBlockNumber, default: 0
+  );
+  writeToJson();
+  //transaction count length
+  if (!result) {
+    console.log(
+      `cache ${0} transactions for ${key} address: ${addr} between [${blockNumber}, newestBlock\n`
+    );
+  } else {
+    const transactions = result[0]; //transaction info
+    const max = result[1]; //max blockNumber to get info from
+    await addrManager.setAddrToBlock(bigAddr[key], max);
+    const collection = db.collection(key + "_" + bigAddr[key]);
+    const inserted = await collection.insertMany(transactions);
+    assert.equal(transactions.length, inserted.result.n);
+    console.log(
+      `cache ${transactions.length} transactions for ${key} address: ${addr} between [${blockNumber}, ${max}\n`
+    );
   }
 }
 
