@@ -9,12 +9,6 @@ const { writeToTokenJson } = require("./utils/addToTokenJson");
 let initialTokenLength = getTokenLength();
 
 async function cachingBigAddrTransactions() {
-  // clear all collections when first start caching
-  const collections = await db.listCollections().toArray();
-  for (let i = 0; i < collections.length; i++) {
-    const res = await db.collection(collections[i].name).drop();
-    assert.equal(res, true);
-  }
   const bigAddr = addrManager.getAddr();
   const addrToBlock = addrManager.getAddrToBlock();
 
@@ -27,6 +21,7 @@ async function cachingBigAddrTransactions() {
     writeToJson();
     //transaction count length
     if (!result) {
+      console.log("no newest transactions");
       continue;
     }
     const transactions = result[0]; //transaction info
@@ -59,6 +54,7 @@ async function updateCachingBigAddrTransactions() {
     writeToJson();
     //transaction count length
     if (!result) {
+      console.log("no newest transactions");
       continue;
     }
     const transactions = result[0];

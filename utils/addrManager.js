@@ -21,7 +21,7 @@ class BigAddrManager {
   async initAddrToBlock() {
     const result = await addrToBlock.find({}, { _id: 0 }).toArray();
     for (let i = 0; i < result.length; i++) {
-      this.addrToBlock[result[i].address] = result[i].blockNumber;
+      this.addrToBlock[result[i].address] = result[i].maxBlockNumber;
     }
   }
 
@@ -54,7 +54,13 @@ class BigAddrManager {
     this.addrToBlock[addr] = maxBlock;
     await addrToBlock.updateOne(
       { address: addr },
-      { $set: { address: addr, maxBlockNumber: maxBlock } },
+      {
+        $set: {
+          label: this.getAddrLabel(addr),
+          address: addr,
+          maxBlockNumber: maxBlock
+        }
+      },
       { upsert: true }
     );
   }
@@ -64,13 +70,16 @@ class BigAddrManager {
       if (this.bigAddr[key] === addr) return key;
     }
   }
+
+  async initAddrManager() {
+    await this.initAddrToBlock();
+    setInterval(() => {
+      this.updateAddr();
+    }, 60000);
+  }
 }
 
-const addrManager = new BigAddrManager();
-addrManager.initAddrToBlock();
-
-setInterval(() => {
-  addrManager.updateAddr();
-}, 60000);
+let addrManager;
+addrManager = new BigAddrManager();
 
 module.exports = addrManager;
