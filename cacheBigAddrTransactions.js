@@ -12,13 +12,23 @@ async function cachingBigAddrTransactions() {
   const bigAddr = addrManager.getAddr();
   const addrToBlock = addrManager.getAddrToBlock();
   for (let key in bigAddr) {
-    await getDifferentTransactions("from", key, bigAddr[key], addrToBlock[key]);
-    await getDifferentTransactions("to", key, bigAddr[key], addrToBlock[key]);
+    await getDifferentTransactions(
+      "from",
+      key,
+      bigAddr[key],
+      addrToBlock[bigAddr[key]]
+    );
+    await getDifferentTransactions(
+      "to",
+      key,
+      bigAddr[key],
+      addrToBlock[bigAddr[key]]
+    );
     await getDifferentTransactions(
       "input",
       key,
       bigAddr[key],
-      addrToBlock[key]
+      addrToBlock[bigAddr[key]]
     );
   }
   setTimeout(() => cycleUpdateCache(), 30000);
@@ -33,13 +43,23 @@ async function updateCachingBigAddrTransactions() {
   const bigAddr = addrManager.getAddr();
   const addrToBlock = addrManager.getAddrToBlock();
   for (let key in bigAddr) {
-    await getDifferentTransactions("from", key, bigAddr[key], addrToBlock[key]);
-    await getDifferentTransactions("to", key, bigAddr[key], addrToBlock[key]);
+    await getDifferentTransactions(
+      "from",
+      key,
+      bigAddr[key],
+      addrToBlock[bigAddr[key]]
+    );
+    await getDifferentTransactions(
+      "to",
+      key,
+      bigAddr[key],
+      addrToBlock[bigAddr[key]]
+    );
     await getDifferentTransactions(
       "input",
       key,
       bigAddr[key],
-      addrToBlock[key]
+      addrToBlock[bigAddr[key]]
     );
   }
 }
@@ -57,9 +77,9 @@ function writeToJson() {
   }
 }
 
-async function getDifferentTransactions(filed, key, addr, blockNumber) {
+async function getDifferentTransactions(field, key, addr, blockNumber) {
   const result = await getTransactions(
-    filed,
+    field,
     addr, //address
     blockNumber //maxBlockNumber, default: 0
   );
@@ -72,8 +92,8 @@ async function getDifferentTransactions(filed, key, addr, blockNumber) {
   } else {
     const transactions = result[0]; //transaction info
     const max = result[1]; //max blockNumber to get info from
-    await addrManager.setAddrToBlock(bigAddr[key], max);
-    const collection = db.collection(key + "_" + bigAddr[key]);
+    await addrManager.setAddrToBlock(addr, max);
+    const collection = db.collection(key + "_" + addr);
     const inserted = await collection.insertMany(transactions);
     assert.equal(transactions.length, inserted.result.n);
     console.log(
