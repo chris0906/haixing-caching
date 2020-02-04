@@ -51,20 +51,18 @@ class BigAddrManager {
   }
 
   async setAddrToBlock(addr, maxBlock) {
-    if (this.addrToBlock[addr] < maxBlock) {
-      this.addrToBlock[addr] = maxBlock;
-      await addrToBlock.updateOne(
-        { address: addr },
-        {
-          $set: {
-            label: this.getAddrLabel(addr),
-            address: addr,
-            maxBlockNumber: maxBlock
-          }
-        },
-        { upsert: true }
-      );
-    }
+    this.addrToBlock[addr] = maxBlock;
+    await addrToBlock.updateOne(
+      { address: addr },
+      {
+        $set: {
+          label: this.getAddrLabel(addr),
+          address: addr,
+          maxBlockNumber: maxBlock
+        }
+      },
+      { upsert: true }
+    );
   }
 
   getAddrLabel(addr) {
