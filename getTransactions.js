@@ -3,13 +3,13 @@ const web3 = new Web3(require("./config/provider").providerAddr);
 const transformData = require("./utils/transformData");
 const { getDbInstance } = require("./db");
 const addrManager = require("./utils/addrManager");
+//get db instance
+const mongodb = getDbInstance();
+const db = mongodb.db("myproject");
+const collection = db.collection("transactions");
 
 async function getTransactions(addr, maxBlockNumber) {
   if (!web3.utils.isAddress(addr)) throw new Error("not a valid address");
-  //get db instance
-  const mongodb = getDbInstance();
-  const db = mongodb.db("myproject");
-  const collection = db.collection("transactions");
   //get start timestamp
   let start = Date.now();
   //get needed data from db
@@ -85,4 +85,143 @@ async function getTransactions(addr, maxBlockNumber) {
   return [finalRes, max];
 }
 
-module.exports = getTransactions;
+module.exports = {
+  getFromTransactions,
+  getToTransactions,
+  getInputTransactions
+};
+
+const projection = {
+  _id: 0,
+  from: 1,
+  to: 1,
+  timestamp: 1,
+  value: 1,
+  input: 1,
+  blockHash: 1,
+  blockNumber: 1
+};
+
+async function getFromTransactions(addr, maxBlockNumber) {
+  if (!web3.utils.isAddress(addr)) throw new Error("not a valid address");
+  console.log(
+    `from: before search for ${addrManager.getAddrLabel(
+      addr
+    )}, heapUsed: ${Math.round(
+      (process.memoryUsage().heapUsed / 1024 / 1024) * 100
+    ) / 100}`
+  );
+  const result = await collection
+    .find({ from: addr, blockNumber: { $gt: maxBlockNumber } }, projection)
+    .collation({ locale: "en", strength: 2 })
+    .toArray();
+  console.log(
+    `from: after search for ${addrManager.getAddrLabel(
+      addr
+    )}, heapUsed: ${Math.round(
+      (process.memoryUsage().heapUsed / 1024 / 1024) * 100
+    ) / 100}`
+  );
+  if (result.length === 0) return null;
+
+  let max = 0;
+
+  for (let i = 0; i < result.length; i++) {
+    if (result[i].blockNumber > max) max = result[i].blockNumber;
+  }
+
+  const finalRes = await transformData(result);
+  console.log(
+    `from: after transform data for ${addrManager.getAddrLabel(
+      addr
+    )}, heapUsed: ${Math.round(
+      (process.memoryUsage().heapUsed / 1024 / 1024) * 100
+    ) / 100}`
+  );
+  return [finalRes, max];
+}
+
+async function getToTransactions(addr, maxBlockNumber) {
+  if (!web3.utils.isAddress(addr)) throw new Error("not a valid address");
+  console.log(
+    `to: before search for ${addrManager.getAddrLabel(
+      addr
+    )}, heapUsed: ${Math.round(
+      (process.memoryUsage().heapUsed / 1024 / 1024) * 100
+    ) / 100}`
+  );
+  const result = await collection
+    .find({ to: addr, blockNumber: { $gt: maxBlockNumber } }, projection)
+    .collation({ locale: "en", strength: 2 })
+    .toArray();
+  console.log(
+    `to: after search for ${addrManager.getAddrLabel(
+      addr
+    )}, heapUsed: ${Math.round(
+      (process.memoryUsage().heapUsed / 1024 / 1024) * 100
+    ) / 100}`
+  );
+  if (result.length === 0) return null;
+
+  let max = 0;
+
+  for (let i = 0; i < result.length; i++) {
+    if (result[i].blockNumber > max) max = result[i].blockNumber;
+  }
+
+  const finalRes = await transformData(result);
+  console.log(
+    `to: after transform data for ${addrManager.getAddrLabel(
+      addr
+    )}, heapUsed: ${Math.round(
+      (process.memoryUsage().heapUsed / 1024 / 1024) * 100
+    ) / 100}`
+  );
+  return [finalRes, max];
+}
+
+async function getInputTransactions(addr, maxBlockNumber) {
+  if (!web3.utils.isAddress(addr)) throw new Error("not a valid address");
+  console.log(
+    `input: before search for ${addrManager.getAddrLabel(
+      addr
+    )}, heapUsed: ${Math.round(
+      (process.memoryUsage().heapUsed / 1024 / 1024) * 100
+    ) / 100}`
+  );
+  const transferCode = "0xa9059cbb000000000000000000000000";
+  const inputData = transferCode + addr.toLowerCase().substr(2);
+  const result = await collection
+    .find(
+      {
+        input: eval("/^" + inputData + "/"),
+        blockNumber: { $gt: maxBlockNumber }
+      },
+      projection
+    )
+    .toArray();
+  console.log(
+    `input: after search for ${addrManager.getAddrLabel(
+      addr
+    )}, heapUsed: ${Math.round(
+      (process.memoryUsage().heapUsed / 1024 / 1024) * 100
+    ) / 100}`
+  );
+  if (result.length === 0) return null;
+
+  let max = 0;
+
+  for (let i = 0; i < result.length; i++) {
+    if (result[i].blockNumber > max) max = result[i].blockNumber;
+  }
+
+  const finalRes = await transformData(result);
+  console.log(
+    `input: after transform data for ${addrManager.getAddrLabel(
+      addr
+    )}, heapUsed: ${Math.round(
+      (process.memoryUsage().heapUsed / 1024 / 1024) * 100
+    ) / 100}`
+  );
+  return [finalRes, max];
+}
